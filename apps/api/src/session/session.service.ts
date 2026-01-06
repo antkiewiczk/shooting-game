@@ -28,25 +28,12 @@ export class SessionService {
 
   async addEvent(
     sessionId: string,
-    userId: string,
-    event: { type: string; ts: string; payload: { hit: boolean; distance: number } },
+    event: {
+      type: string;
+      ts: string;
+      payload: { hit: boolean; distance: number };
+    },
   ) {
-    const session = await this.prisma.session.findUnique({
-      where: { id: sessionId },
-    });
-
-    if (!session) {
-      throw new NotFoundException('Session not found');
-    }
-
-    if (session.userId !== userId) {
-      throw new ForbiddenException('Not your session');
-    }
-
-    if (session.finishedAt) {
-      throw new BadRequestException('Session already finished');
-    }
-
     await this.prisma.event.create({
       data: {
         sessionId,
@@ -60,7 +47,7 @@ export class SessionService {
     return { accepted: true };
   }
 
-  async finishSession(sessionId: string, userId: string) {
+  async finishSession(sessionId: string) {
     const session = await this.prisma.session.findUnique({
       where: { id: sessionId },
       include: { events: { orderBy: { ts: 'asc' } } },
@@ -70,15 +57,6 @@ export class SessionService {
       throw new NotFoundException('Session not found');
     }
 
-    if (session.userId !== userId) {
-      throw new ForbiddenException('Not your session');
-    }
-
-    if (session.finishedAt) {
-      throw new BadRequestException('Session already finished');
-    }
-
-    // Calculate score from events
     const shotEvents = session.events
       .filter((e) => e.type === 'SHOT')
       .map((e) => ({ hit: e.hit, distance: e.distance }));

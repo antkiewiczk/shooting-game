@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SessionService } from './session.service';
+import { SessionGuard } from './session.guard';
 
 interface StartSessionDto {
   mode: string;
@@ -38,20 +39,22 @@ export class SessionController {
   }
 
   @Post(':id/events')
+  @UseGuards(SessionGuard)
   async addEvent(
     @Request() req: { user: { sub: string } },
     @Param('id') id: string,
     @Body() dto: AddEventDto,
   ) {
-    return this.sessionService.addEvent(id, req.user.sub, dto);
+    return this.sessionService.addEvent(id, dto);
   }
 
   @Post(':id/finish')
+  @UseGuards(SessionGuard)
   async finishSession(
     @Request() req: { user: { sub: string } },
     @Param('id') id: string,
   ) {
-    return this.sessionService.finishSession(id, req.user.sub);
+    return this.sessionService.finishSession(id);
   }
 
   @Get(':id')
