@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Leaderboard } from './components/Leaderboard';
+import { Leaderboard } from './components/leaderboard/Leaderboard';
 
 // For dev: use token from env or prompt
 const DEV_TOKEN = import.meta.env.VITE_DEV_TOKEN || '';
@@ -13,7 +13,7 @@ function App() {
       <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-950 p-8">
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
-            <h1 className="bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500 bg-clip-text text-4xl font-black tracking-tight text-transparent">
+            <h1 className="bg-linear-to-r from-emerald-400 via-cyan-400 to-blue-500 bg-clip-text text-4xl font-black tracking-tight text-transparent">
               🎯 Shooting Game
             </h1>
             <p className="mt-2 text-zinc-500">Enter your JWT token to view the leaderboard</p>
@@ -33,7 +33,7 @@ function App() {
             <button
               onClick={() => setToken(inputToken.trim())}
               disabled={!inputToken.trim()}
-              className="mt-4 w-full rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 px-4 py-3 font-semibold text-black transition-all hover:from-emerald-400 hover:to-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-4 w-full rounded-lg bg-linear-to-r from-emerald-500 to-cyan-500 px-4 py-3 font-semibold text-black transition-all hover:from-emerald-400 hover:to-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Enter Leaderboard
             </button>
@@ -55,7 +55,7 @@ function App() {
       {/* Header */}
       <header className="border-b border-zinc-800/50 bg-zinc-900/50 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <h1 className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-xl font-bold text-transparent">
+          <h1 className="bg-linear-to-r from-emerald-400 to-cyan-400 bg-clip-text text-xl font-bold text-transparent">
             🎯 Shooting Game
           </h1>
           <button
