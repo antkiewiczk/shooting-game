@@ -237,7 +237,47 @@ VITE_DEV_TOKEN=""  # Optional: auto-login for development
 - **Service Layer** for API communication
 - **Custom Hooks** (useAuth, useLeaderboard)
 - **Common Components** (Button, Input, Card)
-- **Theme System** with design tokens
+- **Theme System** with Tailwind CSS 4 @theme
+
+## 🔐 Authentication
+
+### How It Works
+
+The app uses JWT (JSON Web Tokens) for authentication:
+
+```
+┌─────────────┐     POST /auth/token      ┌─────────────┐
+│             │ ──────────────────────►  │             │
+│   Browser   │   { email: "..." }       │   API       │
+│   (React)   │ ◄───────────────────    │  (NestJS)   │
+│             │   { token: "..." }      │             │
+└─────────────┘                          └─────────────┘
+       │
+       ▼
+┌─────────────┐
+│ localStorage│  ← stores token ('auth_token')
+│ apiClient   │  ← uses token in Authorization header
+└─────────────┘
+```
+
+### Token Storage
+
+- **localStorage** (`auth_token` key) - persists across browser sessions
+- **API Client memory** - attached to every authenticated request
+
+### Backend Flow
+
+1. `POST /auth/token` - Receives email, creates/finds user, returns JWT
+2. JWT signed with `JWT_SECRET` from environment
+3. Protected endpoints use `JwtAuthGuard` to validate token
+4. `SessionGuard` ensures user owns the session they're accessing
+
+### Frontend Flow
+
+1. User enters email → calls `authService.generateToken(email)`
+2. Token stored in localStorage: `localStorage.setItem('auth_token', token)`
+3. Token also set in apiClient for making requests
+4. All API calls include `Authorization: Bearer <token>`
 
 ## 📄 License
 
