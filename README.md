@@ -23,17 +23,45 @@ shooting-game-monorepo/
 │   └── web/          # React frontend
 ├── packages/
 │   └── shared/       # Shared scoring logic
-├── pnpm-workspace.yaml
+├── docker-compose.yml
+├── Dockerfile.api
+├── Dockerfile.web
 └── README.md
 ```
 
-## Prerequisites
+## Quick Start (Docker)
+
+The easiest way to run the application:
+
+```bash
+# Clone and run
+docker-compose up --build
+
+# Or run in detached mode
+docker-compose up -d --build
+```
+
+Services:
+- **Web**: http://localhost:5173
+- **API**: http://localhost:3001
+- **Database**: localhost:5432
+
+### First Time Use
+
+1. Open http://localhost:5173
+2. Enter your email (e.g., `player1@test.com`)
+3. Click "Generate Token"
+4. You're in!
+
+---
+
+## Local Development
+
+### Prerequisites
 
 - Node.js >= 22
 - PostgreSQL 15+
 - pnpm
-
-## Getting Started
 
 ### 1. Install dependencies
 
@@ -50,15 +78,8 @@ createdb shooting_game
 # Copy environment file
 cp apps/api/.env.example apps/api/.env
 
-# Edit apps/api/.env with your database credentials:
-# DATABASE_URL="postgresql://username:password@localhost:5432/shooting_game"
-# JWT_SECRET="your-secret-key"
-
 # Run migrations
 cd apps/api && npx prisma db push
-
-# Seed users
-npx prisma db seed
 ```
 
 ### 3. Build shared package
@@ -83,11 +104,13 @@ pnpm --filter web dev      # Web on http://localhost:5173
 | Command | Description |
 |---------|-------------|
 | `pnpm dev` | Start all apps in dev mode |
+| `pnpm test` | Run all tests |
+| `pnpm build` | Build shared package |
 | `pnpm --filter api dev` | Start API server |
 | `pnpm --filter web dev` | Start web client |
-| `pnpm --filter @shared/core build` | Build shared package |
 | `pnpm --filter @shared/core test` | Run scoring tests |
-| `pnpm --filter api run mint:token -- <email>` | Generate JWT token |
+| `pnpm --filter api lint` | Lint API |
+| `pnpm --filter web lint` | Lint Web |
 
 ## API Endpoints
 
@@ -95,6 +118,7 @@ All endpoints require `Authorization: Bearer <token>` header.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| `POST` | `/auth/token` | Generate JWT token (no auth required) |
 | `POST` | `/sessions` | Start a new game session |
 | `POST` | `/sessions/:id/events` | Record a shot event |
 | `POST` | `/sessions/:id/finish` | End session and calculate score |
@@ -106,8 +130,9 @@ All endpoints require `Authorization: Bearer <token>` header.
 ### 1. Generate a token
 
 ```bash
-cd apps/api
-pnpm run mint:token -- player1@test.com
+curl -X POST http://localhost:3001/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"email": "player1@test.com"}'
 ```
 
 ### 2. Start a session
@@ -140,21 +165,13 @@ SESSION_ID="<session-id>"
 curl -X POST "http://localhost:3001/sessions/$SESSION_ID/events" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "type": "SHOT",
-    "ts": "2025-01-01T10:00:01Z",
-    "payload": {"hit": true, "distance": 15}
-  }'
+  -d '{"type": "SHOT", "ts": "2025-01-01T10:00:01Z", "payload": {"hit": true, "distance": 15}}'
 
 # Miss
 curl -X POST "http://localhost:3001/sessions/$SESSION_ID/events" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "type": "SHOT",
-    "ts": "2025-01-01T10:00:02Z",
-    "payload": {"hit": false, "distance": 5}
-  }'
+  -d '{"type": "SHOT", "ts": "2025-01-01T10:00:02Z", "payload": {"hit": false, "distance": 5}}'
 ```
 
 ### 4. Finish session
@@ -183,7 +200,7 @@ curl "http://localhost:3001/leaderboard?mode=arcade&limit=10" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Or open the web client at http://localhost:5173 and paste your token.
+Or open http://localhost:5173 to see the leaderboard.
 
 ## Scoring Rules
 
@@ -200,31 +217,12 @@ Or open the web client at http://localhost:5173 and paste your token.
 - 3 hits at distance 15: `3×10 + 3×5 (distance) + 5 (combo) = 50 pts`
 - Hit, miss, hit, hit, hit: `4×10 + 5 (combo for last 3) = 45 pts`
 
-## Database Management
-
-### Prisma Studio (GUI)
-
-Browse and edit database records in a visual interface:
-
-```bash
-cd apps/api && npx prisma studio
-```
-
-Opens at http://localhost:5555
-
-### Clear Leaderboard
-
-```bash
-# Delete all sessions and events (keep users)
-cd apps/api && npx prisma db execute --stdin <<< "DELETE FROM \"Event\"; DELETE FROM \"Session\";"
-
-# Or full reset (deletes everything, re-seeds users)
-cd apps/api && npx prisma db push --force-reset && npx prisma db seed
-```
-
 ## Testing
 
 ```bash
+# Run all tests
+pnpm test
+
 # Run scoring logic tests
 pnpm --filter @shared/core test
 ```
@@ -236,15 +234,22 @@ Tests cover:
 - ✅ Empty sequences
 - ✅ Mixed sequences with combo interruption
 
-## Auth Validation
+## Architecture
 
-| Status | Condition |
-|--------|-----------|
-| 401 | Missing or invalid token |
-| 403 | User ID from token not found in database |
-| 403 | Accessing another user's session |
-| 400 | Adding events to finished session |
-| 404 | Session not found |
+### Backend Patterns
+
+- **DTOs** with class-validator for request validation
+- **Repository Pattern** for data access abstraction
+- **Custom Exceptions** for error handling
+- **Guards** for authentication and authorization
+
+### Frontend Patterns
+
+- **API Client** with interceptors
+- **Service Layer** for business logic
+- **Custom Hooks** (useAuth, useLeaderboard)
+- **Common Components** (Button, Input, Card)
+- **Theme System** with design tokens
 
 ## Environment Variables
 
@@ -265,4 +270,3 @@ VITE_DEV_TOKEN=""  # Optional: auto-login during development
 ## License
 
 UNLICENSED
-

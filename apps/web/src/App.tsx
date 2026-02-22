@@ -1,12 +1,32 @@
 import { useState } from 'react';
 import { Leaderboard } from './components/leaderboard/Leaderboard';
+import { authService } from './services/auth.service';
 
-// For dev: use token from env or prompt
 const DEV_TOKEN = import.meta.env.VITE_DEV_TOKEN || '';
 
 function App() {
   const [token, setToken] = useState(DEV_TOKEN);
   const [inputToken, setInputToken] = useState('');
+  const [email, setEmail] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleGenerateToken = async () => {
+    if (!email.trim()) return;
+    
+    setIsGenerating(true);
+    setError('');
+    
+    try {
+      const newToken = await authService.generateToken(email.trim());
+      setInputToken(newToken);
+      setToken(newToken);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate token');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   if (!token) {
     return (
@@ -20,30 +40,57 @@ function App() {
           </div>
 
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 backdrop-blur">
-            <label className="block text-sm font-medium text-zinc-400">
-              JWT Token
-            </label>
-            <textarea
-              value={inputToken}
-              onChange={(e) => setInputToken(e.target.value)}
-              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-              className="mt-2 w-full resize-none rounded-lg border border-zinc-700 bg-zinc-800/50 px-4 py-3 font-mono text-sm text-zinc-200 placeholder-zinc-600 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-              rows={4}
-            />
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-zinc-400">
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="player1@test.com"
+                className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-4 py-3 text-sm text-zinc-200 placeholder-zinc-600 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </div>
+
             <button
-              onClick={() => setToken(inputToken.trim())}
-              disabled={!inputToken.trim()}
-              className="mt-4 w-full rounded-lg bg-linear-to-r from-emerald-500 to-cyan-500 px-4 py-3 font-semibold text-black transition-all hover:from-emerald-400 hover:to-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={handleGenerateToken}
+              disabled={!email.trim() || isGenerating}
+              className="mb-4 w-full rounded-lg bg-zinc-800 px-4 py-3 text-sm font-semibold text-zinc-300 transition-all hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Enter Leaderboard
+              {isGenerating ? 'Generating...' : 'Generate Token'}
             </button>
+
+            {error && (
+              <p className="mb-4 rounded-lg bg-red-500/10 p-3 text-sm text-red-400">
+                {error}
+              </p>
+            )}
+
+            {inputToken && (
+              <>
+                <label className="block text-sm font-medium text-zinc-400">
+                  Your Token (auto-filled)
+                </label>
+                <textarea
+                  value={inputToken}
+                  onChange={(e) => setInputToken(e.target.value)}
+                  className="mt-2 w-full resize-none rounded-lg border border-zinc-700 bg-zinc-800/50 px-4 py-3 font-mono text-sm text-zinc-200 placeholder-zinc-600 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  rows={4}
+                />
+                <button
+                  onClick={() => setToken(inputToken.trim())}
+                  disabled={!inputToken.trim()}
+                  className="mt-4 w-full rounded-lg bg-linear-to-r from-emerald-500 to-cyan-500 px-4 py-3 font-semibold text-black transition-all hover:from-emerald-400 hover:to-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Enter Leaderboard
+                </button>
+              </>
+            )}
           </div>
 
           <p className="mt-6 text-center text-xs text-zinc-600">
-            Generate a token with:{' '}
-            <code className="rounded bg-zinc-800 px-2 py-1 font-mono text-emerald-400">
-              pnpm run mint:token -- player1@test.com
-            </code>
+            Or enter your token manually above
           </p>
         </div>
       </div>

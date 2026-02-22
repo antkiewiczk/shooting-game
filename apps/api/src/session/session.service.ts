@@ -1,29 +1,37 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-  BadRequestException,
-} from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { Injectable } from '@nestjs/common';
 import { calculateScore } from '@shared/core';
+import {
+  SessionRepository,
+  EventRepository,
+  CreateSessionDto,
+  CreateEventDto,
+  Session,
+  Event,
+} from './repositories';
+import { SessionNotFoundException } from '../common/errors/session.exceptions';
+
+export interface LeaderboardEntry {
+  id: string;
+  mode: string;
+  score: number | null;
+  hits: number | null;
+  misses: number | null;
+  startedAt: Date;
+  finishedAt: Date | null;
+  userId: string;
+  user: { email: string };
+}
 
 @Injectable()
 export class SessionService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly sessionRepository: SessionRepository,
+    private readonly eventRepository: EventRepository,
+  ) {}
 
-  async startSession(userId: string, mode: string) {
-    return this.prisma.session.create({
-      data: {
-        userId,
-        mode,
-      },
-      select: {
-        id: true,
-        userId: true,
-        mode: true,
-        startedAt: true,
-      },
-    });
+  async startSession(userId: string, mode: string): Promise<Session> {
+    const createDto: CreateSessionDto = { userId, mode };
+    return this.sessionRepository.create(createDto);
   }
 
   async addEvent(
@@ -33,96 +41,53 @@ export class SessionService {
       ts: string;
       payload: { hit: boolean; distance: number };
     },
-  ) {
-    await this.prisma.event.create({
-      data: {
-        sessionId,
-        type: event.type,
-        ts: new Date(event.ts),
-        hit: event.payload.hit,
-        distance: event.payload.distance,
-      },
-    });
-
+  ): Promise<{ accepted: boolean }> {
+    const createDto: CreateEventDto = {
+      sessionId,
+      type: event.type,
+      ts: new Date(event.ts),
+      hit: event.payload.hit,
+      distance: event.payload.distance,
+    };
+    await this.eventRepository.create(createDto);
     return { accepted: true };
   }
 
-  async finishSession(sessionId: string) {
-    const session = await this.prisma.session.findUnique({
-      where: { id: sessionId },
-      include: { events: { orderBy: { ts: 'asc' } } },
-    });
+  async finishSession(sessionId: string): Promise<Session> {
+    const sessionWithEvents =
+      await this.sessionRepository.findWithEvents(sessionId);
 
-    if (!session) {
-      throw new NotFoundException('Session not found');
+    if (!sessionWithEvents) {
+      throw new SessionNotFoundException();
     }
 
-    const shotEvents = session.events
-      .filter((e) => e.type === 'SHOT')
-      .map((e) => ({ hit: e.hit, distance: e.distance }));
+    const shotEvents = sessionWithEvents.events
+      .filter((e: Event) => e.type === 'SHOT')
+      .map((e: Event) => ({ hit: e.hit, distance: e.distance }));
 
     const { score, hits, misses } = calculateScore(shotEvents);
 
-    const updated = await this.prisma.session.update({
-      where: { id: sessionId },
-      data: {
-        score,
-        hits,
-        misses,
-        finishedAt: new Date(),
-      },
-      select: {
-        id: true,
-        userId: true,
-        score: true,
-        hits: true,
-        misses: true,
-        finishedAt: true,
-      },
+    const updated = await this.sessionRepository.update(sessionId, {
+      score,
+      hits,
+      misses,
+      finishedAt: new Date(),
     });
 
     return updated;
   }
 
   async getSession(sessionId: string) {
-    const session = await this.prisma.session.findUnique({
-      where: { id: sessionId },
-      include: {
-        events: { orderBy: { ts: 'asc' } },
-        user: { select: { email: true } },
-      },
-    });
+    const session = await this.sessionRepository.findWithEvents(sessionId);
 
     if (!session) {
-      throw new NotFoundException('Session not found');
+      throw new SessionNotFoundException();
     }
 
     return session;
   }
 
-  async getLeaderboard(mode: string, limit = 10) {
-    // Get best session per user for the given mode
-    const sessions = await this.prisma.session.findMany({
-      where: {
-        mode,
-        finishedAt: { not: null },
-        score: { not: null },
-      },
-      orderBy: { score: 'desc' },
-      take: limit * 3, // Get more to filter unique users
-      include: {
-        user: { select: { email: true } },
-      },
-    });
-
-    // Keep only best session per user
-    const seen = new Set<string>();
-    const uniqueUserSessions = sessions.filter((s) => {
-      if (seen.has(s.userId)) return false;
-      seen.add(s.userId);
-      return true;
-    });
-
-    return uniqueUserSessions.slice(0, limit);
+  async getLeaderboard(mode: string, limit = 10): Promise<LeaderboardEntry[]> {
+    return this.sessionRepository.findLeaderboard(mode, limit);
   }
 }

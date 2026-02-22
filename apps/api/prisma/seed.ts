@@ -3,11 +3,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  const users = [
-    'player1@test.com',
-    'player2@test.com',
-    'player3@test.com',
-  ];
+  const users = ['player1@test.com', 'player2@test.com', 'player3@test.com'];
 
   for (const email of users) {
     const user = await prisma.user.upsert({

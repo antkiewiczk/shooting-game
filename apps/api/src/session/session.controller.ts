@@ -11,19 +11,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SessionService } from './session.service';
 import { SessionGuard } from './session.guard';
-
-interface StartSessionDto {
-  mode: string;
-}
-
-interface AddEventDto {
-  type: string;
-  ts: string;
-  payload: {
-    hit: boolean;
-    distance: number;
-  };
-}
+import { StartSessionDto, AddEventDto } from './dto';
 
 @Controller('sessions')
 @UseGuards(JwtAuthGuard)
@@ -45,7 +33,14 @@ export class SessionController {
     @Param('id') id: string,
     @Body() dto: AddEventDto,
   ) {
-    return this.sessionService.addEvent(id, dto);
+    return this.sessionService.addEvent(id, {
+      type: dto.type,
+      ts: dto.ts,
+      payload: {
+        hit: dto.payload.hit,
+        distance: dto.payload.distance,
+      },
+    });
   }
 
   @Post(':id/finish')

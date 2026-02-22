@@ -8,10 +8,10 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
+import { JwtPayload } from '../auth/types/jwt-payload.type';
 
-interface RequestWithUser extends Request {
-  user?: { id?: string; sub?: string };
-  userId?: string;
+export interface AuthenticatedRequest extends Request {
+  user?: JwtPayload;
   body: { sessionId?: string; id?: string };
   session: { id: string; userId: string; finishedAt?: Date | null };
 }
@@ -21,16 +21,10 @@ export class SessionGuard implements CanActivate {
   constructor(private readonly prisma: PrismaService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest<RequestWithUser>();
+    const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
-    const userId = req.user?.id ?? req.user?.sub ?? req.userId;
-    const sessionId =
-      req.params?.sessionId ??
-      req.params?.id ??
-      req.body?.sessionId ??
-      req.body?.id ??
-      req.query?.sessionId ??
-      req.query?.id;
+    const userId = req.user?.sub;
+    const sessionId = this.extractSessionId(req);
 
     if (!sessionId) {
       throw new BadRequestException('Missing session id');
@@ -56,5 +50,16 @@ export class SessionGuard implements CanActivate {
 
     req.session = session;
     return true;
+  }
+
+  private extractSessionId(req: AuthenticatedRequest): string | undefined {
+    return (
+      req.params?.sessionId ??
+      req.params?.id ??
+      req.body?.sessionId ??
+      req.body?.id ??
+      req.query?.sessionId ??
+      req.query?.id
+    );
   }
 }
