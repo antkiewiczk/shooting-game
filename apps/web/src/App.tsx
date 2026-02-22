@@ -1,31 +1,48 @@
 import { useState } from 'react';
+import { Game } from './components/game/Game';
 import { Leaderboard } from './components/leaderboard/Leaderboard';
+import { LoginForm, PlayerSelector } from './components/auth';
+import { AppHeader } from './components/layout';
 import { authService } from './services/auth.service';
 
 const DEV_TOKEN = import.meta.env.VITE_DEV_TOKEN || '';
 
+const AVAILABLE_PLAYERS = [
+  'player1@test.com',
+  'player2@test.com',
+  'player3@test.com',
+  'sharpshooter@test.com',
+  'aimbot@test.com',
+  'triggerhappy@test.com',
+  'bullseye@test.com',
+  'sniper@test.com',
+  'hunter@test.com',
+  'marksman@test.com',
+];
+
 function App() {
   const [token, setToken] = useState(DEV_TOKEN);
-  const [inputToken, setInputToken] = useState('');
-  const [email, setEmail] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
 
-  const handleGenerateToken = async () => {
-    if (!email.trim()) return;
-    
+  const handleGenerateToken = async (email: string) => {
     setIsGenerating(true);
     setError('');
     
     try {
-      const newToken = await authService.generateToken(email.trim());
-      setInputToken(newToken);
+      const newToken = await authService.generateToken(email);
+      authService.setToken(newToken);
       setToken(newToken);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate token');
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleSignOut = () => {
+    authService.clearToken();
+    setToken('');
   };
 
   if (!token) {
@@ -36,62 +53,20 @@ function App() {
             <h1 className="bg-linear-to-r from-emerald-400 via-cyan-400 to-blue-500 bg-clip-text text-4xl font-black tracking-tight text-transparent">
               🎯 Shooting Game
             </h1>
-            <p className="mt-2 text-zinc-500">Enter your JWT token to view the leaderboard</p>
+            <p className="mt-2 text-zinc-500">Enter your email to play</p>
           </div>
 
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 backdrop-blur">
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-zinc-400">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="player1@test.com"
-                className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-4 py-3 text-sm text-zinc-200 placeholder-zinc-600 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-              />
-            </div>
-
-            <button
-              onClick={handleGenerateToken}
-              disabled={!email.trim() || isGenerating}
-              className="mb-4 w-full rounded-lg bg-zinc-800 px-4 py-3 text-sm font-semibold text-zinc-300 transition-all hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isGenerating ? 'Generating...' : 'Generate Token'}
-            </button>
-
-            {error && (
-              <p className="mb-4 rounded-lg bg-red-500/10 p-3 text-sm text-red-400">
-                {error}
-              </p>
-            )}
-
-            {inputToken && (
-              <>
-                <label className="block text-sm font-medium text-zinc-400">
-                  Your Token (auto-filled)
-                </label>
-                <textarea
-                  value={inputToken}
-                  onChange={(e) => setInputToken(e.target.value)}
-                  className="mt-2 w-full resize-none rounded-lg border border-zinc-700 bg-zinc-800/50 px-4 py-3 font-mono text-sm text-zinc-200 placeholder-zinc-600 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                  rows={4}
-                />
-                <button
-                  onClick={() => setToken(inputToken.trim())}
-                  disabled={!inputToken.trim()}
-                  className="mt-4 w-full rounded-lg bg-linear-to-r from-emerald-500 to-cyan-500 px-4 py-3 font-semibold text-black transition-all hover:from-emerald-400 hover:to-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Enter Leaderboard
-                </button>
-              </>
-            )}
+            <LoginForm 
+              onSubmit={handleGenerateToken}
+              isLoading={isGenerating}
+              error={error}
+            />
+            <PlayerSelector 
+              players={AVAILABLE_PLAYERS}
+              onSelect={handleGenerateToken}
+            />
           </div>
-
-          <p className="mt-6 text-center text-xs text-zinc-600">
-            Or enter your token manually above
-          </p>
         </div>
       </div>
     );
@@ -99,27 +74,19 @@ function App() {
 
   return (
     <div className="min-h-screen bg-zinc-950">
-      {/* Header */}
-      <header className="border-b border-zinc-800/50 bg-zinc-900/50 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <h1 className="bg-linear-to-r from-emerald-400 to-cyan-400 bg-clip-text text-xl font-bold text-transparent">
-            🎯 Shooting Game
-          </h1>
-          <button
-            onClick={() => setToken('')}
-            className="rounded-lg px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
+      <AppHeader onSignOut={handleSignOut} />
 
-      {/* Main content */}
       <main className="mx-auto max-w-7xl px-6 py-12">
-        <Leaderboard token={token} />
+        <div className="grid gap-8 lg:grid-cols-2">
+          <div>
+            <Game />
+          </div>
+          <div>
+            <Leaderboard token={token} />
+          </div>
+        </div>
       </main>
 
-      {/* Background effects */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-1/2 left-1/2 h-[800px] w-[800px] -translate-x-1/2 rounded-full bg-emerald-500/5 blur-3xl" />
         <div className="absolute -bottom-1/2 right-0 h-[600px] w-[600px] rounded-full bg-cyan-500/5 blur-3xl" />
