@@ -1,4 +1,4 @@
-import { calculateScore } from '@shared/core';
+import { calculateScore } from './score';
 
 describe('Scoring', () => {
   describe('calculateScore', () => {

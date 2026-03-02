@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { calculateScore } from '@shared/core';
 import {
   SessionRepository,
@@ -27,6 +28,7 @@ export class SessionService {
   constructor(
     private readonly sessionRepository: SessionRepository,
     private readonly eventRepository: EventRepository,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async startSession(userId: string, mode: string): Promise<Session> {
@@ -73,6 +75,8 @@ export class SessionService {
       misses,
       finishedAt: new Date(),
     });
+
+    this.eventEmitter.emit('session.finished', { sessionId, score });
 
     return updated;
   }

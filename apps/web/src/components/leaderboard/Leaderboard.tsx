@@ -3,6 +3,7 @@ import { fetchLeaderboard } from "../../api";
 import { ErrorBoundary, ErrorFallback } from "./LeaderboardErrorBoundary";
 import { LeaderboardSkeleton } from "./LeaderboardSkeleton";
 import { LeaderboardTable } from "./LeaderboardTable";
+import { useLeaderboardSSE } from "../../hooks";
 
 interface LeaderboardProps {
   token: string;
@@ -12,6 +13,13 @@ export const Leaderboard = ({ token }: LeaderboardProps) => {
   const [dataPromise, setDataPromise] = useState(() => fetchLeaderboard(token));
   const [isPending, startTransition] = useTransition();
   const [key, setKey] = useState(0);
+
+  const { data: sseData, isConnected } = useLeaderboardSSE(token, {
+    mode: "arcade",
+    limit: 10,
+  });
+
+  const entries = sseData || null;
 
   const refresh = () => {
     startTransition(() => {
@@ -27,8 +35,13 @@ export const Leaderboard = ({ token }: LeaderboardProps) => {
           <h2 className="text-2xl font-bold tracking-tight text-white">
             🎯 Leaderboard
           </h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            Top players ranked by score
+          <p className="mt-1 flex items-center gap-2 text-sm text-zinc-500">
+            <span
+              className={`inline-block h-2 w-2 rounded-full ${
+                isConnected ? "bg-emerald-500 animate-pulse" : "bg-zinc-600"
+              }`}
+            />
+            {isConnected ? "Live updates" : "Connecting..."}
           </p>
         </div>
         <button
@@ -55,17 +68,21 @@ export const Leaderboard = ({ token }: LeaderboardProps) => {
         </button>
       </div>
 
-      <ErrorBoundary
-        key={key}
-        fallback={(error, retry) => (
-          <ErrorFallback error={error} retry={retry} />
-        )}
-        onRetry={refresh}
-      >
-        <Suspense fallback={<LeaderboardSkeleton />}>
-          <LeaderboardTable dataPromise={dataPromise} />
-        </Suspense>
-      </ErrorBoundary>
+      {entries ? (
+        <LeaderboardTable entries={entries} />
+      ) : (
+        <ErrorBoundary
+          key={key}
+          fallback={(error, retry) => (
+            <ErrorFallback error={error} retry={retry} />
+          )}
+          onRetry={refresh}
+        >
+          <Suspense fallback={<LeaderboardSkeleton />}>
+            <LeaderboardTable dataPromise={dataPromise} />
+          </Suspense>
+        </ErrorBoundary>
+      )}
     </div>
   );
 };

@@ -3,11 +3,12 @@ import { type LeaderboardEntry } from "../../api";
 import { RankBadge } from "../RankBadge";
 
 interface LeaderboardTableProps {
-  dataPromise: Promise<LeaderboardEntry[]>;
+  dataPromise?: Promise<LeaderboardEntry[]>;
+  entries?: LeaderboardEntry[] | null;
 }
 
-export const LeaderboardTable = ({ dataPromise }: LeaderboardTableProps) => {
-  const entries = use(dataPromise);
+export const LeaderboardTable = ({ dataPromise, entries: directEntries }: LeaderboardTableProps) => {
+  const entries = directEntries ?? use(dataPromise!);
 
   if (entries.length === 0) {
     return (

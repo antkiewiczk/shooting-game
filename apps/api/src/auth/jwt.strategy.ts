@@ -3,11 +3,22 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 
+const extractJwtFromQueryOrHeader = (req: {
+  query?: Record<string, string>;
+  headers?: Record<string, string>;
+}) => {
+  const tokenFromQuery = req.query?.token;
+  if (tokenFromQuery) {
+    return tokenFromQuery;
+  }
+  return ExtractJwt.fromAuthHeaderAsBearerToken()(req);
+};
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private prisma: PrismaService) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: extractJwtFromQueryOrHeader,
       secretOrKey: process.env.JWT_SECRET!,
     });
   }

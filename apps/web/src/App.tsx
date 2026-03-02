@@ -1,11 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Game } from './components/game/Game';
 import { Leaderboard } from './components/leaderboard/Leaderboard';
 import { LoginForm, PlayerSelector } from './components/auth';
 import { AppHeader } from './components/layout';
 import { authService } from './services/auth.service';
-
-const DEV_TOKEN = import.meta.env.VITE_DEV_TOKEN || '';
 
 const AVAILABLE_PLAYERS = [
   'player1@test.com',
@@ -21,9 +19,16 @@ const AVAILABLE_PLAYERS = [
 ];
 
 function App() {
-  const [token, setToken] = useState(DEV_TOKEN);
+  const [token, setToken] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const storedToken = authService.getToken();
+    if (storedToken) {
+      setToken(storedToken);
+    }
+  }, []);
 
   const handleGenerateToken = async (email: string) => {
     setIsGenerating(true);
